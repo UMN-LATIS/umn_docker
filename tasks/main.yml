@@ -1,2 +1,33 @@
 ---
 # tasks file for umn_sample_role
+
+- name: Install required packages for Docker
+  ansible.builtin.yum:
+    name:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+    state: present
+
+- name: Add Docker repository
+  ansible.builtin.yum_repository:
+    name: docker-ce
+    description: Docker CE Repository
+    baseurl: https://download.docker.com/linux/centos/7/x86_64/stable
+    gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/centos/gpg
+    enabled: yes
+
+- name: Install Docker CE
+  ansible.builtin.yum:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+
+- name: Ensure Docker service is enabled and started
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: yes
