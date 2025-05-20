@@ -13,7 +13,7 @@
   ansible.builtin.yum_repository:
     name: docker-ce
     description: Docker CE Repository
-    baseurl: https://download.docker.com/linux/centos/7/x86_64/stable
+    baseurl: https://download.docker.com/linux/centos/9/x86_64/stable
     gpgcheck: yes
     gpgkey: https://download.docker.com/linux/centos/gpg
     enabled: yes
@@ -24,6 +24,7 @@
       - docker-ce
       - docker-ce-cli
       - containerd.io
+      - container-selinux
     state: present
 
 - name: Ensure Docker service is enabled and started
@@ -31,3 +32,42 @@
     name: docker
     state: started
     enabled: yes
+
+- name: set the container_manage_cgroup boolean to true
+  ansible.posix.seboolean:
+    name: container_manage_cgroup
+    state: true
+    persistent: yes
+
+- name: update the daemon.json to flag as selinux being enabled
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "selinux-enabled": true
+      }
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Docker
+
+- name: "template in a docker firewall policy"
+  ansible.builtin.template:
+    src: docker-firewall-policy.j2
+    dest: /etc/firewalld/policies/docker-to-any.xml
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart firewalld
+
+- name: Append a call to reload the firewall at the bottom of the umn-update script
+  ansible.builtin.blockinfile:
+    path: /usr/local/bin/umn-update
+    owner: root
+    mode: "0744"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Reload the firewall after OS updates"
+    insertafter: "EOF"
+    block: |
+      # https://tdx.umn.edu/TDNext/Apps/29/Tickets/TicketDet.aspx?TicketID=1690216
+      sleep 5
+      /usr/bin/firewall-cmd --reload

@@ -1,2 +1,12 @@
 ---
-# handlers file for umn_sample_role
+- name: Restart Docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+
+- name: Restart firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: restarted
+  
